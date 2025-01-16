@@ -1,6 +1,7 @@
 dash==2.18.2
 dash_table==5.0.0
-pandas==1.5.3
+pandas==1.3.5
+numpy==1.21.6 
 plotly==5.4.0
 gunicorn
 dash-tools

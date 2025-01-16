@@ -95,6 +95,7 @@ old_eq.index = pd.to_datetime(old_eq.index)
 current=load_data('current.csv')
 current.set_index('Unnamed: 0',inplace=True)
 
+
 symbols = summary_table['symbol'].unique()
 
 
