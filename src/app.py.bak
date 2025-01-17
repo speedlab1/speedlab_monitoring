@@ -26,7 +26,7 @@ def load_data(data_file: str) -> pd.DataFrame:
     PATH = pathlib.Path(__file__).parent
     DATA_PATH = PATH.joinpath("data").resolve()
     return pd.read_csv(DATA_PATH.joinpath(data_file))
-print('ok')
+
 d_cry=load_data('d_cry.csv')
 d_cry = d_cry.set_index('Unnamed: 0').to_dict()
 win_pct_cry=load_data('win_pct_cry.csv')
