@@ -107,8 +107,7 @@ current_w.set_index('Unnamed: 0',inplace=True)
 
 symbols = summary_table['symbol'].unique()
 
-# Initialize Dash app
-app = dash.Dash(__name__)
+
 app.layout = html.Div([
     html.H1("SpeedLab Monitoring Dashboard"),
     html.Div([
