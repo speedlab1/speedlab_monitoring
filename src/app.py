@@ -43,6 +43,10 @@ old_eq_cry.set_index('Unnamed: 0',inplace=True)
 old_eq_cry.index = pd.to_datetime(old_eq_cry.index)
 current_cry=load_data('current_cry.csv')
 current_cry.set_index('Unnamed: 0',inplace=True)
+current_cry_w=load_data('current_cry_w.csv')
+current_cry_w.set_index('Unnamed: 0',inplace=True)
+
+
 
 d_sto=load_data('d_sto.csv')
 d_sto = d_sto.set_index('Unnamed: 0').to_dict()
@@ -60,6 +64,8 @@ old_eq_sto.set_index('Unnamed: 0',inplace=True)
 old_eq_sto.index = pd.to_datetime(old_eq_sto.index)
 current_sto=load_data('current_sto.csv')
 current_sto.set_index('Unnamed: 0',inplace=True)
+current_sto_w=load_data('current_sto_w.csv')
+current_sto_w.set_index('Unnamed: 0',inplace=True)
 
 d_fo=load_data('d_fo.csv')
 d_fo = d_fo.set_index('Unnamed: 0').to_dict()
@@ -77,6 +83,8 @@ old_eq_fo.set_index('Unnamed: 0',inplace=True)
 old_eq_fo.index = pd.to_datetime(old_eq_fo.index)
 current_fo=load_data('current_fo.csv')
 current_fo.set_index('Unnamed: 0',inplace=True)
+current_fo_w=load_data('current_fo_w.csv')
+current_fo_w.set_index('Unnamed: 0',inplace=True)
 
 d=load_data('d.csv')
 d = d.set_index('Unnamed: 0').to_dict()
@@ -94,11 +102,13 @@ old_eq.set_index('Unnamed: 0',inplace=True)
 old_eq.index = pd.to_datetime(old_eq.index)
 current=load_data('current.csv')
 current.set_index('Unnamed: 0',inplace=True)
-
+current_w=load_data('current_w.csv')
+current_w.set_index('Unnamed: 0',inplace=True)
 
 symbols = summary_table['symbol'].unique()
 
-
+# Initialize Dash app
+app = dash.Dash(__name__)
 app.layout = html.Div([
     html.H1("SpeedLab Monitoring Dashboard"),
     html.Div([
@@ -111,7 +121,7 @@ app.layout = html.Div([
                 {'label': 'Crypto', 'value': 'cry'},
                 {'label': 'Forex', 'value': 'forex'}
             ],
-            value='ind'
+            value='cry'
         )
     ], style={'width': '50%', 'margin': '0 auto'}),
     html.Div([
@@ -125,6 +135,16 @@ app.layout = html.Div([
 
     # Graph for cumsum pnl
     dcc.Graph(id='pnl-plot'),
+
+    # Current table
+    html.Div([
+        html.H2("Current Week"),
+        dash_table.DataTable(
+            id='current-week-table',
+            style_table={'overflowX': 'auto'},
+            style_cell={'textAlign': 'center'}
+        )
+    ]),
 
     # Current table
     html.Div([
@@ -180,9 +200,11 @@ def update_symbols(selected_dataset):
     return options, default_value
 
 
-
 @app.callback(
     [Output('pnl-plot', 'figure'),
+     Output('current-week-table', 'data'),
+     Output('current-week-table', 'columns'),
+     Output('current-week-table', 'style_data_conditional'),
      Output('current-table', 'data'),
      Output('current-table', 'columns'),
      Output('current-table', 'style_data_conditional'),
@@ -193,7 +215,7 @@ def update_symbols(selected_dataset):
     [Input('dataset-dropdown', 'value'),
      Input('symbol-dropdown', 'value')]
 )
-def update_dashboard(selected_dataset,selected_symbol):
+def update_dashboard(selected_dataset, selected_symbol):
     if selected_dataset == 'ind':
         change = pd.to_datetime(change_date[selected_symbol])
         before_date = frames_all.loc[:change]
@@ -250,7 +272,7 @@ def update_dashboard(selected_dataset,selected_symbol):
 
         # Add conditional formatting for alerts
         alert_value = current_data['Alert'].iloc[0]
-        alert_value2 = summary_table[summary_table['symbol']==selected_symbol]['Underwater (days)'].iloc[0]
+        alert_value2 = summary_table[summary_table['symbol'] == selected_symbol]['Underwater (days)'].iloc[0]
         style_data_conditional = []
         if current_data['Current Month'].iloc[0] < alert_value:
             style_data_conditional.append({
@@ -271,15 +293,44 @@ def update_dashboard(selected_dataset,selected_symbol):
                 'color': 'white'
             })
 
+        current_data_w = pd.DataFrame(current_w.loc[selected_symbol]).T
+        current_columns_w = [{'name': col, 'id': col} for col in current_w.columns]
+
+        # Add conditional formatting for alerts
+        alert_value = current_data_w['Alert'].iloc[0]
+        alert_value2 = summary_table[summary_table['symbol'] == selected_symbol]['Underwater (days)'].iloc[0]
+        style_data_conditional_w = []
+        if current_data_w['Current Week'].iloc[0] < alert_value:
+            style_data_conditional_w.append({
+                'if': {
+                    'filter_query': '{{Current Week}} < {:.2f}'.format(alert_value),
+                    'column_id': 'Current Week'
+                },
+                'backgroundColor': 'red',
+                'color': 'white'
+            })
+        if current_data_w['Underwater'].iloc[0] > alert_value2:
+            style_data_conditional_w.append({
+                'if': {
+                    'filter_query': '{{Underwater}} > {:.2f}'.format(alert_value2),
+                    'column_id': 'Underwater'
+                },
+                'backgroundColor': 'red',
+                'color': 'white'
+            })
+
         # Update summary table
-        summary_data = summary_table[summary_table['symbol']==selected_symbol]
+        summary_data = summary_table[summary_table['symbol'] == selected_symbol]
         summary_columns = [{'name': col, 'id': col} for col in summary_data.columns]
 
         # Update win percent table
         win_data = win_pct[selected_symbol].reset_index()
         win_columns = [{'name': col, 'id': col} for col in win_data.columns]
 
-        return fig,current_data.to_dict('records'), current_columns,style_data_conditional, summary_data.to_dict('records'), summary_columns, win_data.to_dict('records'), win_columns
+        return fig, current_data_w.to_dict(
+            'records'), current_columns_w, style_data_conditional_w, current_data.to_dict(
+            'records'), current_columns, style_data_conditional, summary_data.to_dict(
+            'records'), summary_columns, win_data.to_dict('records'), win_columns
     elif selected_dataset == 'forex':
         change = pd.to_datetime(change_date_fo[selected_symbol])
         before_date = frames_all_fo.loc[:change]
@@ -332,7 +383,7 @@ def update_dashboard(selected_dataset,selected_symbol):
         )
         # Update current table
         current_data = pd.DataFrame(current_fo.loc[selected_symbol]).T
-        current_columns = [{'name': col, 'id': col} for col in current.columns]
+        current_columns = [{'name': col, 'id': col} for col in current_fo.columns]
 
         # Add conditional formatting for alerts
         alert_value = current_data['Alert'].iloc[0]
@@ -357,6 +408,32 @@ def update_dashboard(selected_dataset,selected_symbol):
                 'color': 'white'
             })
 
+        current_data_w = pd.DataFrame(current_fo_w.loc[selected_symbol]).T
+        current_columns_w = [{'name': col, 'id': col} for col in current_fo_w.columns]
+
+        # Add conditional formatting for alerts
+        alert_value = current_data_w['Alert'].iloc[0]
+        alert_value2 = summary_table_fo[summary_table_fo['symbol'] == selected_symbol]['Underwater (days)'].iloc[0]
+        style_data_conditional_w = []
+        if current_data_w['Current Week'].iloc[0] < alert_value:
+            style_data_conditional_w.append({
+                'if': {
+                    'filter_query': '{{Current Week}} < {:.2f}'.format(alert_value),
+                    'column_id': 'Current Week'
+                },
+                'backgroundColor': 'red',
+                'color': 'white'
+            })
+        if current_data_w['Underwater'].iloc[0] > alert_value2:
+            style_data_conditional_w.append({
+                'if': {
+                    'filter_query': '{{Underwater}} > {:.2f}'.format(alert_value2),
+                    'column_id': 'Underwater'
+                },
+                'backgroundColor': 'red',
+                'color': 'white'
+            })
+
         # Update summary table
         summary_data = summary_table_fo[summary_table_fo['symbol'] == selected_symbol]
         summary_columns = [{'name': col, 'id': col} for col in summary_data.columns]
@@ -365,7 +442,9 @@ def update_dashboard(selected_dataset,selected_symbol):
         win_data = win_pct_fo[selected_symbol].reset_index()
         win_columns = [{'name': col, 'id': col} for col in win_data.columns]
 
-        return fig, current_data.to_dict('records'), current_columns, style_data_conditional, summary_data.to_dict(
+        return fig, current_data_w.to_dict(
+            'records'), current_columns_w, style_data_conditional_w, current_data.to_dict(
+            'records'), current_columns, style_data_conditional, summary_data.to_dict(
             'records'), summary_columns, win_data.to_dict('records'), win_columns
     elif selected_dataset == 'cry':
         change = pd.to_datetime(change_date_cry[selected_symbol])
@@ -419,7 +498,7 @@ def update_dashboard(selected_dataset,selected_symbol):
         )
         # Update current table
         current_data = pd.DataFrame(current_cry.loc[selected_symbol]).T
-        current_columns = [{'name': col, 'id': col} for col in current.columns]
+        current_columns = [{'name': col, 'id': col} for col in current_cry.columns]
 
         # Add conditional formatting for alerts
         alert_value = current_data['Alert'].iloc[0]
@@ -444,6 +523,32 @@ def update_dashboard(selected_dataset,selected_symbol):
                 'color': 'white'
             })
 
+        current_data_w = pd.DataFrame(current_cry_w.loc[selected_symbol]).T
+        current_columns_w = [{'name': col, 'id': col} for col in current_cry_w.columns]
+
+        # Add conditional formatting for alerts
+        alert_value = current_data_w['Alert'].iloc[0]
+        alert_value2 = summary_table_cry[summary_table_cry['symbol'] == selected_symbol]['Underwater (days)'].iloc[0]
+        style_data_conditional_w = []
+        if current_data_w['Current Week'].iloc[0] < alert_value:
+            style_data_conditional_w.append({
+                'if': {
+                    'filter_query': '{{Current Week}} < {:.2f}'.format(alert_value),
+                    'column_id': 'Current Week'
+                },
+                'backgroundColor': 'red',
+                'color': 'white'
+            })
+        if current_data_w['Underwater'].iloc[0] > alert_value2:
+            style_data_conditional_w.append({
+                'if': {
+                    'filter_query': '{{Underwater}} > {:.2f}'.format(alert_value2),
+                    'column_id': 'Underwater'
+                },
+                'backgroundColor': 'red',
+                'color': 'white'
+            })
+
         # Update summary table
         summary_data = summary_table_cry[summary_table_cry['symbol'] == selected_symbol]
         summary_columns = [{'name': col, 'id': col} for col in summary_data.columns]
@@ -452,7 +557,9 @@ def update_dashboard(selected_dataset,selected_symbol):
         win_data = win_pct_cry[selected_symbol].reset_index()
         win_columns = [{'name': col, 'id': col} for col in win_data.columns]
 
-        return fig, current_data.to_dict('records'), current_columns, style_data_conditional, summary_data.to_dict(
+        return fig, current_data_w.to_dict(
+            'records'), current_columns_w, style_data_conditional_w, current_data.to_dict(
+            'records'), current_columns, style_data_conditional, summary_data.to_dict(
             'records'), summary_columns, win_data.to_dict('records'), win_columns
     else:
         change = pd.to_datetime(change_date_sto[selected_symbol])
@@ -506,7 +613,7 @@ def update_dashboard(selected_dataset,selected_symbol):
         )
         # Update current table
         current_data = pd.DataFrame(current_sto.loc[selected_symbol]).T
-        current_columns = [{'name': col, 'id': col} for col in current.columns]
+        current_columns = [{'name': col, 'id': col} for col in current_sto.columns]
 
         # Add conditional formatting for alerts
         alert_value = current_data['Alert'].iloc[0]
@@ -531,6 +638,32 @@ def update_dashboard(selected_dataset,selected_symbol):
                 'color': 'white'
             })
 
+        current_data_w = pd.DataFrame(current_sto_w.loc[selected_symbol]).T
+        current_columns_w = [{'name': col, 'id': col} for col in current_sto_w.columns]
+
+        # Add conditional formatting for alerts
+        alert_value = current_data_w['Alert'].iloc[0]
+        alert_value2 = summary_table_sto[summary_table_sto['symbol'] == selected_symbol]['Underwater (days)'].iloc[0]
+        style_data_conditional_w = []
+        if current_data_w['Current Week'].iloc[0] < alert_value:
+            style_data_conditional_w.append({
+                'if': {
+                    'filter_query': '{{Current Week}} < {:.2f}'.format(alert_value),
+                    'column_id': 'Current Week'
+                },
+                'backgroundColor': 'red',
+                'color': 'white'
+            })
+        if current_data_w['Underwater'].iloc[0] > alert_value2:
+            style_data_conditional_w.append({
+                'if': {
+                    'filter_query': '{{Underwater}} > {:.2f}'.format(alert_value2),
+                    'column_id': 'Underwater'
+                },
+                'backgroundColor': 'red',
+                'color': 'white'
+            })
+
         # Update summary table
         summary_data = summary_table_sto[summary_table_sto['symbol'] == selected_symbol]
         summary_columns = [{'name': col, 'id': col} for col in summary_data.columns]
@@ -539,9 +672,10 @@ def update_dashboard(selected_dataset,selected_symbol):
         win_data = win_pct_sto[selected_symbol].reset_index()
         win_columns = [{'name': col, 'id': col} for col in win_data.columns]
 
-        return fig, current_data.to_dict('records'), current_columns, style_data_conditional, summary_data.to_dict(
+        return fig, current_data_w.to_dict(
+            'records'), current_columns_w, style_data_conditional_w, current_data.to_dict(
+            'records'), current_columns, style_data_conditional, summary_data.to_dict(
             'records'), summary_columns, win_data.to_dict('records'), win_columns
-
 
 
 if __name__ == "__main__":
