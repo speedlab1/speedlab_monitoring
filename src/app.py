@@ -107,7 +107,6 @@ current_w.set_index('Unnamed: 0',inplace=True)
 
 symbols = summary_table['symbol'].unique()
 
-
 app.layout = html.Div([
     html.H1("SpeedLab Monitoring Dashboard"),
     html.Div([
@@ -164,6 +163,15 @@ app.layout = html.Div([
             style_cell={'textAlign': 'center'}
         )
     ]),
+    # Correlation table
+    html.Div([
+        html.H2("Correlation Table"),
+        dash_table.DataTable(
+            id='corr-table',
+            style_table={'overflowX': 'auto'},
+            style_cell={'textAlign': 'center'}
+        )
+    ]),
 
     # Win percent table
     html.Div([
@@ -209,6 +217,9 @@ def update_symbols(selected_dataset):
      Output('current-table', 'style_data_conditional'),
      Output('summary-table', 'data'),
      Output('summary-table', 'columns'),
+     Output('corr-table', 'data'),
+     Output('corr-table', 'columns'),
+     Output('corr-table', 'style_data_conditional'),
      Output('win-percent-table', 'data'),
      Output('win-percent-table', 'columns')],
     [Input('dataset-dropdown', 'value'),
@@ -322,6 +333,21 @@ def update_dashboard(selected_dataset, selected_symbol):
         summary_data = summary_table[summary_table['symbol'] == selected_symbol]
         summary_columns = [{'name': col, 'id': col} for col in summary_data.columns]
 
+        path_corr = r'C:\Users\kb\SpeedLab AG\Research & Development - Documents\General\Agent performance by symbol\rl2\\'
+        corr = pd.read_csv(path_corr + f'{selected_symbol}_corr.csv')
+        corr.set_index('Unnamed: 0', inplace=True)
+
+        corr_columns = [{'name': col, 'id': col} for col in corr.columns]
+
+        style_data_conditional_corr = [
+            {
+                "if": {"filter_query": f"{{{col}}} = {corr[col][row]}", "column_id": col},
+                "backgroundColor": get_color(corr[col][row]),
+                "color": "black"
+            }
+            for col in corr.columns for row in corr.index
+        ]
+
         # Update win percent table
         win_data = win_pct[selected_symbol].reset_index()
         win_columns = [{'name': col, 'id': col} for col in win_data.columns]
@@ -329,7 +355,8 @@ def update_dashboard(selected_dataset, selected_symbol):
         return fig, current_data_w.to_dict(
             'records'), current_columns_w, style_data_conditional_w, current_data.to_dict(
             'records'), current_columns, style_data_conditional, summary_data.to_dict(
-            'records'), summary_columns, win_data.to_dict('records'), win_columns
+            'records'), summary_columns, corr.to_dict(
+            'records'), corr_columns, style_data_conditional_corr, win_data.to_dict('records'), win_columns
     elif selected_dataset == 'forex':
         change = pd.to_datetime(change_date_fo[selected_symbol])
         before_date = frames_all_fo.loc[:change]
@@ -437,6 +464,19 @@ def update_dashboard(selected_dataset, selected_symbol):
         summary_data = summary_table_fo[summary_table_fo['symbol'] == selected_symbol]
         summary_columns = [{'name': col, 'id': col} for col in summary_data.columns]
 
+        path_corr = r'C:\Users\kb\SpeedLab AG\Research & Development - Documents\General\Agent performance by symbol\rl2\\'
+        corr = pd.read_csv(path_corr + f'{selected_symbol.split("_")[0]}_corr.csv')
+        corr.set_index('Unnamed: 0', inplace=True)
+        corr_columns = [{'name': col, 'id': col} for col in corr.columns]
+        style_data_conditional_corr = [
+            {
+                "if": {"filter_query": f"{{{col}}} = {corr[col][row]}", "column_id": col},
+                "backgroundColor": get_color(corr[col][row]),
+                "color": "black"
+            }
+            for col in corr.columns for row in corr.index
+        ]
+
         # Update win percent table
         win_data = win_pct_fo[selected_symbol].reset_index()
         win_columns = [{'name': col, 'id': col} for col in win_data.columns]
@@ -444,7 +484,8 @@ def update_dashboard(selected_dataset, selected_symbol):
         return fig, current_data_w.to_dict(
             'records'), current_columns_w, style_data_conditional_w, current_data.to_dict(
             'records'), current_columns, style_data_conditional, summary_data.to_dict(
-            'records'), summary_columns, win_data.to_dict('records'), win_columns
+            'records'), summary_columns, corr.to_dict(
+            'records'), corr_columns, style_data_conditional_corr, win_data.to_dict('records'), win_columns
     elif selected_dataset == 'cry':
         change = pd.to_datetime(change_date_cry[selected_symbol])
         before_date = frames_all_cry.loc[:change]
@@ -552,6 +593,19 @@ def update_dashboard(selected_dataset, selected_symbol):
         summary_data = summary_table_cry[summary_table_cry['symbol'] == selected_symbol]
         summary_columns = [{'name': col, 'id': col} for col in summary_data.columns]
 
+        path_corr = r'C:\Users\kb\SpeedLab AG\Research & Development - Documents\General\Agent performance by symbol\crypto\\'
+        corr = pd.read_csv(path_corr + f'{selected_symbol}_corr.csv')
+        corr.set_index('Unnamed: 0', inplace=True)
+
+        corr_columns = [{'name': col, 'id': col} for col in corr.columns]
+        style_data_conditional_corr = [
+            {
+                "if": {"filter_query": f"{{{col}}} = {corr[col][row]}", "column_id": col},
+                "backgroundColor": get_color(corr[col][row]),
+                "color": "black"
+            }
+            for col in corr.columns for row in corr.index
+        ]
         # Update win percent table
         win_data = win_pct_cry[selected_symbol].reset_index()
         win_columns = [{'name': col, 'id': col} for col in win_data.columns]
@@ -559,7 +613,8 @@ def update_dashboard(selected_dataset, selected_symbol):
         return fig, current_data_w.to_dict(
             'records'), current_columns_w, style_data_conditional_w, current_data.to_dict(
             'records'), current_columns, style_data_conditional, summary_data.to_dict(
-            'records'), summary_columns, win_data.to_dict('records'), win_columns
+            'records'), summary_columns, corr.to_dict(
+            'records'), corr_columns, style_data_conditional_corr, win_data.to_dict('records'), win_columns
     else:
         change = pd.to_datetime(change_date_sto[selected_symbol])
         before_date = frames_all_sto.loc[:change]
@@ -667,6 +722,19 @@ def update_dashboard(selected_dataset, selected_symbol):
         summary_data = summary_table_sto[summary_table_sto['symbol'] == selected_symbol]
         summary_columns = [{'name': col, 'id': col} for col in summary_data.columns]
 
+        path_corr = r'C:\Users\kb\SpeedLab AG\Research & Development - Documents\General\Agent performance by symbol\rl2\\'
+        corr = pd.read_csv(path_corr + f'{selected_symbol}_corr.csv')
+        corr.set_index('Unnamed: 0', inplace=True)
+        corr_columns = [{'name': col, 'id': col} for col in corr.columns]
+        style_data_conditional_corr = [
+            {
+                "if": {"filter_query": f"{{{col}}} = {corr[col][row]}", "column_id": col},
+                "backgroundColor": get_color(corr[col][row]),
+                "color": "black"
+            }
+            for col in corr.columns for row in corr.index
+        ]
+
         # Update win percent table
         win_data = win_pct_sto[selected_symbol].reset_index()
         win_columns = [{'name': col, 'id': col} for col in win_data.columns]
@@ -674,7 +742,8 @@ def update_dashboard(selected_dataset, selected_symbol):
         return fig, current_data_w.to_dict(
             'records'), current_columns_w, style_data_conditional_w, current_data.to_dict(
             'records'), current_columns, style_data_conditional, summary_data.to_dict(
-            'records'), summary_columns, win_data.to_dict('records'), win_columns
+            'records'), summary_columns, corr.to_dict(
+            'records'), corr_columns, style_data_conditional_corr, win_data.to_dict('records'), win_columns
 
 
 if __name__ == "__main__":
