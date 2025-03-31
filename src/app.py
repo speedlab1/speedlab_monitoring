@@ -66,6 +66,8 @@ current_sto=load_data('current_sto.csv')
 current_sto.set_index('Unnamed: 0',inplace=True)
 current_sto_w=load_data('current_sto_w.csv')
 current_sto_w.set_index('Unnamed: 0',inplace=True)
+bnh = load_data('bnh.csv')
+bnh.set_index('Unnamed: 0',inplace=True)
 
 d_fo=load_data('d_fo.csv')
 d_fo = d_fo.set_index('Unnamed: 0').to_dict()
@@ -566,6 +568,8 @@ def update_dashboard(selected_dataset, selected_symbol):
         after_date = frames_all_sto.loc[change:]
         before_date_old_eq = old_eq_sto.loc[:change]
         after_date_old_eq = old_eq_sto.loc[change:]
+        before_bnh = bnh.loc[:change]
+        after_bnh = bnh.loc[change:]
         trace_before = go.Scatter(
             x=before_date.index,
             y=before_date[selected_symbol],
@@ -596,8 +600,23 @@ def update_dashboard(selected_dataset, selected_symbol):
             name='Backtest After',
             line=dict(color='red')
         )
+        trace_before_bnh = go.Scatter(
+            x=before_bnh.index,
+            y=before_bnh[selected_symbol],
+            mode='lines',
+            name='Buy_n_hold',
+            line=dict(color='green')
+        )
 
-        fig = go.Figure(data=[trace_before, trace_after, trace_after_old_eq])
+        trace_after_bnh = go.Scatter(
+            x=after_bnh.index,
+            y=after_bnh[selected_symbol],
+            mode='lines',
+            name='Buy_n_hold_live',
+            line=dict(color='purple')
+        )
+
+        fig = go.Figure(data=[trace_before, trace_after, trace_after_old_eq, trace_before_bnh, trace_after_bnh])
         # fig.add_trace(go.Scatter(
         #     x=frames_all.index,
         #     y=frames_all[selected_symbol],
@@ -667,6 +686,7 @@ def update_dashboard(selected_dataset, selected_symbol):
         summary_data = summary_table_sto[summary_table_sto['symbol'] == selected_symbol]
         summary_columns = [{'name': col, 'id': col} for col in summary_data.columns]
 
+
         # Update win percent table
         win_data = win_pct_sto[selected_symbol].reset_index()
         win_columns = [{'name': col, 'id': col} for col in win_data.columns]
@@ -674,7 +694,7 @@ def update_dashboard(selected_dataset, selected_symbol):
         return fig, current_data_w.to_dict(
             'records'), current_columns_w, style_data_conditional_w, current_data.to_dict(
             'records'), current_columns, style_data_conditional, summary_data.to_dict(
-            'records'), summary_columns, win_data.to_dict('records'), win_columns
+            'records'), summary_columns,  win_data.to_dict('records'), win_columns
 
 
 if __name__ == "__main__":
