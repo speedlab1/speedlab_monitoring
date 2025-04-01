@@ -68,6 +68,7 @@ current_sto_w=load_data('current_sto_w.csv')
 current_sto_w.set_index('Unnamed: 0',inplace=True)
 bnh = load_data('bnh.csv')
 bnh.set_index('Unnamed: 0',inplace=True)
+bnh.index = pd.to_datetime(bnh.index)
 
 d_fo=load_data('d_fo.csv')
 d_fo = d_fo.set_index('Unnamed: 0').to_dict()
