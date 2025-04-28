@@ -568,7 +568,7 @@ def update_dashboard(selected_dataset, selected_symbol):
         before_date = frames_all_sto.loc[:change]
         after_date = frames_all_sto.loc[change:]
         before_date_old_eq = old_eq_sto.loc[:change]
-        after_date_old_eq = old_eq_sto.loc[change:]
+        after_date_old_eq = old_eq_sto.loc[change:pd.to_datetime('2025-02-18')]
         before_bnh = bnh.loc[:change]
         after_bnh = bnh.loc[change:]
         trace_before = go.Scatter(
